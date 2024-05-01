@@ -248,7 +248,7 @@ class MaskDecoder2_512(nn.Module):
             transformer_dim, iou_head_hidden_dim, self.num_mask_tokens, iou_head_depth
         )
         self.med_sel = nn.Sequential(
-            nn.Linear(9,9),
+            nn.Linear(self.num_mask_tokens,self.num_mask_tokens),
             nn.ReLU()
         )
 
@@ -262,7 +262,7 @@ class MaskDecoder2_512(nn.Module):
         self.norm2 = nn.LayerNorm(1024)
         self.mlp = MLPBlock(1024, 2048)
         self.med_sel = nn.Sequential(
-            nn.Linear(9,1),
+            nn.Linear(self.num_mask_tokens,1),
             nn.ReLU()
         )
         self.softmax = nn.Softmax(dim=1)
@@ -372,7 +372,7 @@ class MaskDecoder2_512(nn.Module):
         msk_feat = self.self_attn2(q=msk_feat, k=msk_feat, v=msk_feat)
         msk_feat = msk_feat.clone()+self.mlp(msk_feat)
         msk_feat = self.norm2(msk_feat)
-        msk_feat = self.med_sel(msk_feat.transpose( -2, -1))
+        msk_feat = self.med_sel(msk_feat.transpose(-2, -1))
         
         # if flag_resize == 1:
         #     msk_feat = msk_feat.resize_(msk_feat.shape[-3], 1024, msk_feat.shape[-1],)
@@ -406,7 +406,6 @@ class MaskDecoder2_512(nn.Module):
         return masks, iou_pred, attn_out
 
 
-
 class MLP2(nn.Module):
 
     def __init__(
@@ -431,6 +430,7 @@ class MLP2(nn.Module):
         if self.sigmoid_output:
             x = F.sigmoid(x)
         return x
+
 
 class Attention(nn.Module):
     """
@@ -488,6 +488,7 @@ class Attention(nn.Module):
         out = self.out_proj(out)
 
         return out
+
 
 class MLPBlock(nn.Module):
     def __init__(

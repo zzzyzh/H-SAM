@@ -1,29 +1,45 @@
 import argparse
-import logging
 import os
+from datetime import datetime
+
 import random
 import numpy as np
 import torch
 import torch.backends.cudnn as cudnn
 
 from importlib import import_module
-
-from sam_lora_image_encoder import LoRA_Sam
 from segment_anything import sam_model_registry
 
-from trainer import trainer_synapse
+from trainer import trainer
 from icecream import ic
 
+
+os.environ['CUDA_VISIBLE_DEVICES'] = '2'
+
 parser = argparse.ArgumentParser()
-parser.add_argument('--root_path', type=str,
-                    default='/data2/zhcheng/train_npz_224', help='root dir for data')
-parser.add_argument('--output', type=str, default='./output')
+# Set-up Model
+parser.add_argument('--task', type=str,
+                    default='abdomen', help='task name')
 parser.add_argument('--dataset', type=str,
-                    default='Synapse', help='experiment_name')
+                    default='sabs_sammed', help='dataset name')
+parser.add_argument('--root_path', type=str,
+                    default='/home/yanzhonghao/data', help='root dir for data')
+parser.add_argument('--output', type=str, default='/home/yanzhonghao/data/experiments/h_sam')
 parser.add_argument('--list_dir', type=str,
-                    default='./lists/lists_Synapse', help='list dir')
+                    default='./lists/lists_sabs', help='list dir')
 parser.add_argument('--split', type=str,
                     default='train', help='list dir')
+parser.add_argument('--vit_name', type=str,
+                    default='vit_b', help='select one vit model')
+parser.add_argument('--ckpt', type=str, default='/home/yanzhonghao/data/experiments/weights/sam_vit_b_01ec64.pth',
+                    help='Pretrained checkpoint')
+parser.add_argument('--lora_ckpt', type=str, default=None, help='Finetuned lora checkpoint')
+
+# Running Strategy
+parser.add_argument('--is_pretrain', type=bool,
+                    default=True, help='use pre-train model')
+parser.add_argument('--img_size', type=int,
+                    default=512, help='input patch size of network input')
 parser.add_argument('--num_classes', type=int,
                     default=8, help='output channel of network')
 parser.add_argument('--max_iterations', type=int,
@@ -34,20 +50,11 @@ parser.add_argument('--stop_epoch', type=int,
                     default=300, help='maximum epoch number to train')
 parser.add_argument('--batch_size', type=int,
                     default=24, help='batch_size per gpu')
-parser.add_argument('--n_gpu', type=int, default=2, help='total gpu')
+parser.add_argument('--n_gpu', type=int, default=1, help='total gpu')
 parser.add_argument('--deterministic', type=int, default=1,
                     help='whether use deterministic training')
 parser.add_argument('--base_lr', type=float, default=0.005,
                     help='segmentation network learning rate')
-parser.add_argument('--img_size', type=int,
-                    default=224, help='input patch size of network input')
-parser.add_argument('--seed', type=int,
-                    default=2345, help='random seed')
-parser.add_argument('--vit_name', type=str,
-                    default='vit_b', help='select one vit model')
-parser.add_argument('--ckpt', type=str, default='checkpoints/sam_vit_b_01ec64.pth',
-                    help='Pretrained checkpoint')
-parser.add_argument('--lora_ckpt', type=str, default=None, help='Finetuned lora checkpoint')
 parser.add_argument('--rank', type=int, default=5, help='Rank for LoRA adaptation')
 parser.add_argument('--warmup', action='store_true', help='If activated, warp up the learning from a lower lr to the base_lr')
 parser.add_argument('--warmup_period', type=int, default=250,
@@ -55,7 +62,11 @@ parser.add_argument('--warmup_period', type=int, default=250,
 parser.add_argument('--AdamW', action='store_true', help='If activated, use AdamW to finetune SAM model')
 parser.add_argument('--module', type=str, default='sam_lora_image_encoder')
 parser.add_argument('--dice_param', type=float, default=0.9)
+parser.add_argument('--seed', type=int,
+                    default=2024, help='random seed')
+
 args = parser.parse_args()
+
 
 if __name__ == "__main__":
     if not args.deterministic:
@@ -69,17 +80,11 @@ if __name__ == "__main__":
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     torch.cuda.manual_seed(args.seed)
+    
     dataset_name = args.dataset
-    dataset_config = {
-        'Synapse': {
-            'root_path': args.root_path,
-            'list_dir': args.list_dir,
-            'num_classes': args.num_classes,
-        }
-    }
-    args.is_pretrain = True
-    args.exp = dataset_name + '_' + str(args.img_size)
-    snapshot_path = os.path.join(args.output, "{}".format(args.exp))
+    now = datetime.now().strftime('%Y%m%d-%H%M')
+    args.exp = f'{dataset_name}_{args.img_size}_{now}'
+    snapshot_path = os.path.join(args.output, dataset_name, args.exp)
     snapshot_path = snapshot_path + '_pretrain' if args.is_pretrain else snapshot_path
     snapshot_path += '_' + args.vit_name
     snapshot_path = snapshot_path + '_' + str(args.max_iterations)[
@@ -87,7 +92,6 @@ if __name__ == "__main__":
     snapshot_path = snapshot_path + '_epo' + str(args.max_epochs) if args.max_epochs != 30 else snapshot_path
     snapshot_path = snapshot_path + '_bs' + str(args.batch_size)
     snapshot_path = snapshot_path + '_lr' + str(args.base_lr) if args.base_lr != 0.01 else snapshot_path
-    snapshot_path = snapshot_path + '_s' + str(args.seed) if args.seed != 1234 else snapshot_path
 
     if not os.path.exists(snapshot_path):
         os.makedirs(snapshot_path)
@@ -120,5 +124,4 @@ if __name__ == "__main__":
     with open(config_file, 'w') as f:
         f.writelines(config_items)
 
-    trainer = {'Synapse': trainer_synapse}
-    trainer[dataset_name](args, net, snapshot_path, multimask_output, low_res)
+    trainer(args, net, snapshot_path, multimask_output, low_res)

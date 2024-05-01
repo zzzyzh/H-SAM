@@ -99,7 +99,6 @@ class DiceLoss(nn.Module):
         return loss / self.n_classes
 
 
-
 def calculate_metric_percase(pred, gt):
     pred[pred > 0] = 1
     gt[gt > 0] = 1
@@ -192,6 +191,7 @@ def test_single_volume(image, label, net, classes, multimask_output, patch_size=
             writer.writerow(metric_list_dice)
     return metric_list
 
+
 def mask_latent_code_spatial_wise(latent_code, loss, percentile=1 / 3.0, random=False, loss_type='corr', if_detach=True, if_soft=False):
     '''
     given a latent code return a perturbed code where top % areas are masked 
@@ -233,11 +233,8 @@ def mask_latent_code_spatial_wise(latent_code, loss, percentile=1 / 3.0, random=
     else:
         masked_latent_code = code * mask_all
 
-    try:
-        decoder_function.zero_grad()
-    except:
-        pass
     return masked_latent_code, mask_all
+
 
 def set_grad(module, requires_grad=False):
     for p in module.parameters():  # reset requires_grad

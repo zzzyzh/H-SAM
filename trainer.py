@@ -27,6 +27,7 @@ from batchgenerators.transforms.color_transforms import GammaTransform
 from batchgenerators.transforms.spatial_transforms import SpatialTransform, MirrorTransform
 from batchgenerators.transforms.utility_transforms import RemoveLabelTransform, RenameTransform, NumpyToTensor
 
+
 def torch2D_Hausdorff_distance(x,y): # Input be like (Batch,width,height)
     x = x.float()
     y = y.float()
@@ -55,6 +56,7 @@ def calc_loss(outputs, low_res_label_batch, ce_loss, dice_loss, dice_weight:floa
     loss = ((1 - dice_weight) * loss_ce + dice_weight * loss_dice)
     return loss, loss_ce, loss_dice
 
+
 class AddGaussianNoise(object):
 
     def __init__(self, mean=0.0, variance=1.0, amplitude=1.0,p=1):
@@ -76,6 +78,8 @@ class AddGaussianNoise(object):
             return img
         else:
             return img
+
+
 #椒盐噪声
 class AddPepperNoise(object):
     """"
@@ -108,8 +112,9 @@ class AddPepperNoise(object):
         else:
             return img
 
-def trainer_synapse(args, model, snapshot_path, multimask_output, low_res):
-    from datasets.dataset_synapse import Synapse_dataset, RandomGenerator
+
+def trainer(args, model, snapshot_path, multimask_output, low_res):
+    from datasets import Synapse_dataset, Bhx_dataset, RandomGenerator
     logging.basicConfig(filename=snapshot_path + "/log.txt", level=logging.INFO,
                         format='[%(asctime)s.%(msecs)03d] %(message)s', datefmt='%H:%M:%S')
     logging.getLogger().addHandler(logging.StreamHandler(sys.stdout))
@@ -118,10 +123,17 @@ def trainer_synapse(args, model, snapshot_path, multimask_output, low_res):
     num_classes = args.num_classes
     batch_size = args.batch_size * args.n_gpu
     # max_iterations = args.max_iterations
-    db_train = Synapse_dataset(base_dir=args.root_path, list_dir=args.list_dir, split=args.split,
-                               transform=transforms.Compose(
-                                   [RandomGenerator(output_size=[args.img_size, args.img_size], low_res=[low_res, low_res])
-                                   ]))
+    base_dir = os.path.join(args.root_path, args.task, args.dataset)
+    if args.dataset == 'sabs_sammed':
+        db_train = Synapse_dataset(base_dir=base_dir, list_dir=args.list_dir, split=args.split,
+                                    transform=transforms.Compose(
+                                        [RandomGenerator(output_size=[args.img_size, args.img_size], low_res=[low_res, low_res])
+                                        ]))
+    elif args.dataset == 'bhx_sammed_priori':
+        db_train = Bhx_dataset(base_dir=base_dir, list_dir=args.list_dir, split=args.split,
+                            transform=transforms.Compose(
+                                [RandomGenerator(output_size=[args.img_size, args.img_size], low_res=[low_res, low_res])
+                                ]))
     print("The length of train set is: {}".format(len(db_train)))
 
     def worker_init_fn(worker_id):

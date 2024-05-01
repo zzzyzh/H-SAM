@@ -28,9 +28,6 @@ def build_sam_vit_h(image_size, num_classes, pixel_mean=[123.675, 116.28, 103.53
     )
 
 
-
-
-
 def build_sam_vit_l(image_size, num_classes, pixel_mean=[123.675, 116.28, 103.53], pixel_std=[58.395, 57.12, 57.375],
                     checkpoint=None):
     return _build_sam(
@@ -52,8 +49,7 @@ def build_sam_vit_b(image_size, num_classes, pixel_mean=[123.675, 116.28, 103.53
         encoder_embed_dim=768,
         encoder_depth=12,
         encoder_num_heads=12,
-        encoder_global_attn_indexes=[2, 5, 8, 11],
-        # adopt global attention at [3, 6, 9, 12] transform layer, else window attention layer
+        encoder_global_attn_indexes=[2, 5, 8, 11], # adopt global attention at [3, 6, 9, 12] transform layer, else window attention layer
         checkpoint=checkpoint,
         num_classes=num_classes,
         image_size=image_size,
@@ -61,9 +57,8 @@ def build_sam_vit_b(image_size, num_classes, pixel_mean=[123.675, 116.28, 103.53
         pixel_std=pixel_std
     )
 
+
 build_sam = build_sam_vit_l
-
-
 sam_model_registry = {
     "default": build_sam_vit_h,
     "vit_h": build_sam_vit_h,

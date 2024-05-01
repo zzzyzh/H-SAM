@@ -1,16 +1,16 @@
 import os
 import random
 import h5py
-import numpy as np
-import torch
-from scipy import ndimage
-from scipy.ndimage.interpolation import zoom
-from torch.utils.data import Dataset
 from einops import repeat
 from icecream import ic
+
 import cv2
-from scipy.ndimage.filters import gaussian_filter
-from scipy.ndimage.interpolation import map_coordinates
+import numpy as np
+from scipy import ndimage
+from scipy.ndimage import zoom
+from scipy.ndimage import gaussian_filter, map_coordinates
+import torch
+from torch.utils.data import Dataset
 
 
 def random_rot_flip(image, label):
@@ -28,6 +28,7 @@ def random_rotate(image, label):
     image = ndimage.rotate(image, angle, order=0, reshape=False)
     label = ndimage.rotate(label, angle, order=0, reshape=False)
     return image, label
+
 
 def random_crop(image, label):
     min_ratio = 0.2
@@ -50,6 +51,7 @@ def random_crop(image, label):
 
     return image, label
 
+
 def random_scale(image, label, scale_factor=0.6):
     min_ratio = 0.2
     max_ratio = 0.8
@@ -69,6 +71,7 @@ def random_scale(image, label, scale_factor=0.6):
     label = label[x:x+new_w,y:y+new_h]
 
     return image, label
+
 
 def random_elastic(image,label, alpha, sigma,
                       alpha_affine, random_state=None):
@@ -110,10 +113,12 @@ def random_elastic(image,label, alpha, sigma,
 
     return imageC, labelC
 
+
 def random_gaussian(image, var=0.1):
     noise = np.random.normal(0, var, image.shape)
     image = image + noise
     return image
+
 
 def random_gaussian_filter(im, K_size=3, sigma=1.3):
     im = im*255
@@ -175,7 +180,6 @@ class RandomGenerator(object):
         #     image = random_gaussian(image, var=0.05)
         
         
-        
         x, y = image.shape
         if x != self.output_size[0] or y != self.output_size[1]:
             image = zoom(image, (self.output_size[0] / x, self.output_size[1] / y), order=3)  # why not 3?
@@ -188,35 +192,60 @@ class RandomGenerator(object):
         low_res_label = torch.from_numpy(low_res_label.astype(np.float32))
         sample = {'image': image, 'label': label.long(), 'low_res_label': low_res_label.long()}
         return sample
-
+    
 
 class Synapse_dataset(Dataset):
     def __init__(self, base_dir, list_dir, split, transform=None):
-        self.transform = transform  # using transform in torch!
         self.split = split
-        self.sample_list = open(os.path.join(list_dir, self.split+'.txt')).readlines()
-        self.data_dir = base_dir
+        self.image_dir = os.path.join(base_dir, split, "images")
+        self.mask_dir = os.path.join(base_dir, split, "masks")
+        self.sample_list = open(list_dir+f'_{split}.txt').readlines()
+        
+        self.transform = transform  # using transform in torch!
 
     def __len__(self):
         return len(self.sample_list)
 
     def __getitem__(self, idx):
         if self.split == "train":
-            slice_name = self.sample_list[idx].strip('\n')
-            data_path = os.path.join(self.data_dir, slice_name+'.npz')
-            data = np.load(data_path)
-            image, label = data['image'], data['label']
-        else:
-            vol_name = self.sample_list[idx].strip('\n')
-            filepath = self.data_dir + "/{}.npy.h5".format(vol_name)
-            data = h5py.File(filepath)
-            image, label = data['image'][:], data['label'][:]
+            slice_name = self.sample_list[idx].strip('\n') + '.png'
+            image = cv2.imread(os.path.join(self.image_dir, slice_name), 0)
+            label = cv2.imread(os.path.join(self.mask_dir, slice_name), 0)
+            image = cv2.resize(image, (512, 512), interpolation=cv2.INTER_NEAREST)
+            label = cv2.resize(label, (512, 512), interpolation=cv2.INTER_NEAREST)
+            
+            image = image / 255.0
 
-        # Input dim should be consistent
-        # Since the channel dimension of nature image is 3, that of medical image should also be 3
-
-        sample = {'image': image, 'label': label}
+        sample = {'image': image, 'label': label, 'case_name': self.sample_list[idx].strip('\n')}
         if self.transform:
             sample = self.transform(sample)
-        sample['case_name'] = self.sample_list[idx].strip('\n')
-        return sample
+        return sample   
+    
+    
+class Bhx_dataset(Dataset):
+    def __init__(self, base_dir, list_dir, split, transform=None):
+        self.split = split
+        self.image_dir = os.path.join(base_dir, split, "images")
+        self.mask_dir = os.path.join(base_dir, split, "masks")
+        self.sample_list = open(list_dir+f'_{split}.txt').readlines()
+        
+        self.transform = transform  # using transform in torch!
+
+    def __len__(self):
+        return len(self.sample_list)
+
+    def __getitem__(self, idx):
+        if self.split == "train":
+            slice_name = self.sample_list[idx].strip('\n') + '.png'
+            image = cv2.imread(os.path.join(self.image_dir, slice_name), 0)
+            label = cv2.imread(os.path.join(self.mask_dir, slice_name), 0)
+            image = cv2.resize(image, (512, 512), interpolation=cv2.INTER_NEAREST)
+            label = cv2.resize(label, (512, 512), interpolation=cv2.INTER_NEAREST)
+            label[label >= 4] = 0
+            
+            image = image / 255.0
+
+        sample = {'image': image, 'label': label, 'case_name': self.sample_list[idx].strip('\n')}
+        if self.transform:
+            sample = self.transform(sample)
+        return sample  
