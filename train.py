@@ -14,7 +14,7 @@ from trainer import trainer
 from icecream import ic
 
 
-os.environ['CUDA_VISIBLE_DEVICES'] = '2'
+os.environ['CUDA_VISIBLE_DEVICES'] = '1,2'
 
 parser = argparse.ArgumentParser()
 # Set-up Model
@@ -34,19 +34,18 @@ parser.add_argument('--vit_name', type=str,
 parser.add_argument('--ckpt', type=str, default='/home/yanzhonghao/data/experiments/weights/sam_vit_b_01ec64.pth',
                     help='Pretrained checkpoint')
 parser.add_argument('--lora_ckpt', type=str, default=None, help='Finetuned lora checkpoint')
+parser.add_argument('--scale', type=int, default=127)
 
 # Running Strategy
 parser.add_argument('--is_pretrain', type=bool,
                     default=True, help='use pre-train model')
 parser.add_argument('--img_size', type=int,
+                    default=512, help='input image size')
+parser.add_argument('--resolution', type=int,
                     default=512, help='input patch size of network input')
 parser.add_argument('--num_classes', type=int,
                     default=8, help='output channel of network')
-parser.add_argument('--max_iterations', type=int,
-                    default=30000, help='maximum epoch number to train')
 parser.add_argument('--max_epochs', type=int,
-                    default=300, help='maximum epoch number to train')
-parser.add_argument('--stop_epoch', type=int,
                     default=300, help='maximum epoch number to train')
 parser.add_argument('--batch_size', type=int,
                     default=24, help='batch_size per gpu')
@@ -62,8 +61,7 @@ parser.add_argument('--warmup_period', type=int, default=250,
 parser.add_argument('--AdamW', action='store_true', help='If activated, use AdamW to finetune SAM model')
 parser.add_argument('--module', type=str, default='sam_lora_image_encoder')
 parser.add_argument('--dice_param', type=float, default=0.9)
-parser.add_argument('--seed', type=int,
-                    default=2024, help='random seed')
+parser.add_argument('--seed', type=int, default=2024, help='random seed')
 
 args = parser.parse_args()
 
@@ -83,15 +81,8 @@ if __name__ == "__main__":
     
     dataset_name = args.dataset
     now = datetime.now().strftime('%Y%m%d-%H%M')
-    args.exp = f'{dataset_name}_{args.img_size}_{now}'
+    args.exp = f'{dataset_name}_{args.img_size}_{now}_{args.scale}'
     snapshot_path = os.path.join(args.output, dataset_name, args.exp)
-    snapshot_path = snapshot_path + '_pretrain' if args.is_pretrain else snapshot_path
-    snapshot_path += '_' + args.vit_name
-    snapshot_path = snapshot_path + '_' + str(args.max_iterations)[
-                                          0:2] + 'k' if args.max_iterations != 30000 else snapshot_path
-    snapshot_path = snapshot_path + '_epo' + str(args.max_epochs) if args.max_epochs != 30 else snapshot_path
-    snapshot_path = snapshot_path + '_bs' + str(args.batch_size)
-    snapshot_path = snapshot_path + '_lr' + str(args.base_lr) if args.base_lr != 0.01 else snapshot_path
 
     if not os.path.exists(snapshot_path):
         os.makedirs(snapshot_path)

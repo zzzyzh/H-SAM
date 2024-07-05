@@ -1,0 +1,8 @@
+CUDA_VISIBLE_DEVICES=1 python test.py --split=test --num_classes=8 --train_time 20240507-1626 --list_dir=./lists/lists_sabs --img_size=512 --vit_name=vit_b --ckpt=/home/yanzhonghao/data/experiments/weights/sam_vit_b_01ec64.pth
+CUDA_VISIBLE_DEVICES=1 python test.py --split=test --num_classes=8 --train_time 20240507-1626 --list_dir=./lists/lists_sabs --img_size=512 --vit_name=vit_b --ckpt=/home/yanzhonghao/data/experiments/weights/sam_vit_b_01ec64.pth --volume=True
+
+CUDA_VISIBLE_DEVICES=1 python test.py --split=test --num_classes=8 --scale=63 --train_time 20240515-0922 --list_dir=./lists/lists_sabs --img_size=512 --vit_name=vit_b --ckpt=/home/yanzhonghao/data/experiments/weights/sam_vit_b_01ec64.pth
+CUDA_VISIBLE_DEVICES=1 python test.py --split=test --num_classes=8 --scale=63 --train_time 20240515-0922 --list_dir=./lists/lists_sabs --img_size=512 --vit_name=vit_b --ckpt=/home/yanzhonghao/data/experiments/weights/sam_vit_b_01ec64.pth --volume=True
+
+CUDA_VISIBLE_DEVICES=1 python test.py --split=test --num_classes=8 --scale=12 --train_time 20240515-1202 --list_dir=./lists/lists_sabs --img_size=512 --vit_name=vit_b --ckpt=/home/yanzhonghao/data/experiments/weights/sam_vit_b_01ec64.pth
+CUDA_VISIBLE_DEVICES=1 python test.py --split=test --num_classes=8 --scale=12 --train_time 20240515-1202 --list_dir=./lists/lists_sabs --img_size=512 --vit_name=vit_b --ckpt=/home/yanzhonghao/data/experiments/weights/sam_vit_b_01ec64.pth --volume=True

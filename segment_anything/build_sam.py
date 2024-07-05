@@ -196,7 +196,6 @@ def _build_sam(
 
 
 def load_from(sam, state_dict, image_size, vit_patch_size, encoder_global_attn_indexes):
-    ega = encoder_global_attn_indexes
     sam_dict = sam.state_dict()
     except_keys = ['mask_tokens', 'output_hypernetworks_mlps', 'iou_prediction_head']
     new_state_dict = {k: v for k, v in state_dict.items() if
@@ -211,22 +210,12 @@ def load_from(sam, state_dict, image_size, vit_patch_size, encoder_global_attn_i
         new_state_dict['image_encoder.pos_embed'] = pos_embed
         rel_pos_keys = [k for k in sam_dict.keys() if 'rel_pos' in k]
 
-
-        # for k in sam_dict.keys():
-        #     if 'rel_pos' in k:
-        #         print(k)
-        # print('dddddd')
-        # for k in new_state_dict.keys():
-        #     if 'rel_pos' in k:
-        #         print(k)
-
-
         global_rel_pos_keys = []
         for rel_pos_key in rel_pos_keys:
             num = int(rel_pos_key.split('.')[2])
             if num in encoder_global_attn_indexes:
                 global_rel_pos_keys.append(rel_pos_key)
-        # global_rel_pos_keys = [k for k in rel_pos_keys if '2' in k or '5' in  k or '8' in k or '11' in k]
+
         for k in global_rel_pos_keys:
             rel_pos_params = new_state_dict[k]
             h, w = rel_pos_params.shape

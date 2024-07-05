@@ -490,6 +490,7 @@ class Attention2(nn.Module):
 
         return out
 
+
 class CrossAttentionLayer(nn.Module):
 
     def __init__(self, d_model, nhead, dropout=0.0,

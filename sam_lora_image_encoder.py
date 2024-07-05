@@ -145,7 +145,7 @@ class LoRA_Sam(nn.Module):
         merged_dict = {**a_tensors, **b_tensors, **prompt_encoder_tensors,**prompt_encoder2_tensors, **mask_decoder_tensors, **mask_decoder2_tensors}
         torch.save(merged_dict, filename)
 
-    def load_lora_parameters(self, filename: str) -> None:
+    def load_lora_parameters(self, filename: str) -> None: 
         r"""Only safetensors is supported now.
 
         pip install safetensor if you do not have one installed yet.\

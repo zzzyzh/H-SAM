@@ -179,10 +179,9 @@ class RandomGenerator(object):
         # if random.random() > 0.6:
         #     image = random_gaussian(image, var=0.05)
         
-        
         x, y = image.shape
         if x != self.output_size[0] or y != self.output_size[1]:
-            image = zoom(image, (self.output_size[0] / x, self.output_size[1] / y), order=3)  # why not 3?
+            image = zoom(image, (self.output_size[0] / x, self.output_size[1] / y), order=3)
             label = zoom(label, (self.output_size[0] / x, self.output_size[1] / y), order=0)
         label_h, label_w = label.shape
         low_res_label = zoom(label, (self.low_res[0] / label_h, self.low_res[1] / label_w), order=0)
@@ -194,58 +193,63 @@ class RandomGenerator(object):
         return sample
     
 
-class Synapse_dataset(Dataset):
-    def __init__(self, base_dir, list_dir, split, transform=None):
+class TrainingDataset(Dataset):
+    def __init__(self, base_dir, list_dir, split, scale=200, transform=None):
         self.split = split
         self.image_dir = os.path.join(base_dir, split, "images")
         self.mask_dir = os.path.join(base_dir, split, "masks")
-        self.sample_list = open(list_dir+f'_{split}.txt').readlines()
+        self.sample_list = open(list_dir+f'_{split}_{scale}.txt').readlines()
         
         self.transform = transform  # using transform in torch!
+        
+        if 'sabs' in self.image_dir:
+            self.class_to_name = {1: 'spleen', 2: 'right kidney', 3: 'left kidney', 4: 'gallbladder', 5: 'liver', 6: 'stomach', 7: 'aorta', 8: 'pancreas'}
+        elif 'bhx' in self.image_dir:
+            self.class_to_name = {'right': 1, 'left': 2, 'third': 3, 'fourth': 4}
 
     def __len__(self):
         return len(self.sample_list)
 
     def __getitem__(self, idx):
-        if self.split == "train":
-            slice_name = self.sample_list[idx].strip('\n') + '.png'
-            image = cv2.imread(os.path.join(self.image_dir, slice_name), 0)
-            label = cv2.imread(os.path.join(self.mask_dir, slice_name), 0)
-            image = cv2.resize(image, (512, 512), interpolation=cv2.INTER_NEAREST)
-            label = cv2.resize(label, (512, 512), interpolation=cv2.INTER_NEAREST)
-            
-            image = image / 255.0
+        slice_name = self.sample_list[idx].strip('\n') + '.png'
+        image = cv2.imread(os.path.join(self.image_dir, slice_name), 0)
+        label = cv2.imread(os.path.join(self.mask_dir, slice_name), 0)
+        image = cv2.resize(image, (512, 512), interpolation=cv2.INTER_CUBIC)
+        label = cv2.resize(label, (512, 512), interpolation=cv2.INTER_NEAREST)
+        
+        image = image / 255.0
 
         sample = {'image': image, 'label': label, 'case_name': self.sample_list[idx].strip('\n')}
         if self.transform:
             sample = self.transform(sample)
-        return sample   
-    
-    
-class Bhx_dataset(Dataset):
-    def __init__(self, base_dir, list_dir, split, transform=None):
+        return sample 
+
+
+class TestingDataset(Dataset):
+    def __init__(self, base_dir, list_dir, split):
         self.split = split
         self.image_dir = os.path.join(base_dir, split, "images")
         self.mask_dir = os.path.join(base_dir, split, "masks")
         self.sample_list = open(list_dir+f'_{split}.txt').readlines()
         
-        self.transform = transform  # using transform in torch!
+        if 'sabs' in self.image_dir:
+            self.class_to_name = {1: 'spleen', 2: 'right kidney', 3: 'left kidney', 4: 'gallbladder', 5: 'liver', 6: 'stomach', 7: 'aorta', 8: 'pancreas'}
+        elif 'bhx' in self.image_dir:
+            self.class_to_name = {'right': 1, 'left': 2, 'third': 3, 'fourth': 4}
 
     def __len__(self):
         return len(self.sample_list)
 
     def __getitem__(self, idx):
-        if self.split == "train":
-            slice_name = self.sample_list[idx].strip('\n') + '.png'
-            image = cv2.imread(os.path.join(self.image_dir, slice_name), 0)
-            label = cv2.imread(os.path.join(self.mask_dir, slice_name), 0)
-            image = cv2.resize(image, (512, 512), interpolation=cv2.INTER_NEAREST)
-            label = cv2.resize(label, (512, 512), interpolation=cv2.INTER_NEAREST)
-            label[label >= 4] = 0
-            
-            image = image / 255.0
+        slice_name = self.sample_list[idx].strip('\n') + '.png'
+        image = cv2.imread(os.path.join(self.image_dir, slice_name), 0)
+        label = cv2.imread(os.path.join(self.mask_dir, slice_name), 0)
+        image = cv2.resize(image, (512, 512), interpolation=cv2.INTER_CUBIC)
+        label = cv2.resize(label, (512, 512), interpolation=cv2.INTER_NEAREST)
+        
+        image = image / 255.0
+        image = repeat(image[np.newaxis, :, :], 'c h w -> (repeat c) h w', repeat=3)
 
-        sample = {'image': image, 'label': label, 'case_name': self.sample_list[idx].strip('\n')}
-        if self.transform:
-            sample = self.transform(sample)
-        return sample  
+        sample = {'image': image.astype(np.float32), 'label': label.astype(np.float32), 'case_name': self.sample_list[idx].strip('\n')}
+
+        return sample 

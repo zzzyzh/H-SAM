@@ -10,6 +10,46 @@ from tqdm import tqdm
 from icecream import ic
 
 
+atlas = {
+    1: "spleen",
+    2: "rkid",
+    3: "lkid",
+    4: "gall",
+    5: "eso",
+    6: "liver",
+    7: "sto",
+    8: "aorta",
+    9: "IVC",
+    10: "veins",
+    11: "pancreas",
+    12: "rad",
+    13: "lad"
+}
+
+VAL_VOLUME = [
+    "0035",
+    "0036",
+    "0037",
+]
+
+TEST_VOLUME = [
+    "0038",
+    "0039",
+    "0040",
+] # reference: https://github.com/Project-MONAI/research-contributions/tree/main/SwinUNETR
+
+part_atlas = {
+    1: 'spleen', 
+    2: 'rkid', 
+    3: 'lkid', 
+    4: "gall", 
+    6: 'liver', 
+    7: "sto", 
+    8: "aorta", 
+    11: "pancreas"
+}
+
+
 parser = argparse.ArgumentParser()
 parser.add_argument('--src_path', type=str,
                    default='../data/Abdomen/RawData', help='download path for Synapse data')
