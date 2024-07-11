@@ -415,6 +415,20 @@ def compute_mask_IU_eval(masks, target):
     return intersection, union
 
 
+def compute_hd95(pred, gt):
+    pred[pred > 0] = 1
+    gt[gt > 0] = 1
+    
+    pred = np.array(pred)
+    gt = np.array(gt)
+    
+    if pred.sum() > 0 and gt.sum() > 0:
+        hd95 = metric.binary.hd95(pred, gt)
+        return hd95
+    else:
+        return 0
+
+
 def get_logger(filename, write_mode="w", verbosity=1, name=None):
     level_dict = {0: logging.DEBUG, 1: logging.INFO, 2: logging.WARNING}
     formatter = logging.Formatter(
