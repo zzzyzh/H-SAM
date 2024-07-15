@@ -44,16 +44,14 @@ def pre_test():
 
 
 if __name__ == "__main__":
-    # root_path = '/home/yanzhonghao/data/ven/bhx_sammed'
-    # save_path = '/home/yanzhonghao/medical_sam/H-SAM/lists/lists_bhx'
-    root_path = '/home/yanzhonghao/data/abdomen/sabs_sammed'
-    save_path = '/home/yanzhonghao/medical_sam/H-SAM/lists/lists_sabs'
-
-    # mode = ['val', 'test']  
-    # pre_test()
+    random.seed(2024)
+    root_path = '/home/yanzhonghao/data/ven/bhx_sammed'
+    save_path = '/home/yanzhonghao/medical_sam/H-SAM/lists/lists_bhx'
+    # root_path = '/home/yanzhonghao/data/abdomen/sabs_sammed'
+    # save_path = '/home/yanzhonghao/medical_sam/H-SAM/lists/lists_sabs'
 
     mode = 'train'
-    # pre_train(perc=0.1)
+    pre_train(perc=0.1)
     pre_train(perc=0.05)
     pre_train(perc=0.01)
 
