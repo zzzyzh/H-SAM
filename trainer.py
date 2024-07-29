@@ -19,14 +19,6 @@ from icecream import ic
 from PIL import Image
 from einops import repeat
 
-from batchgenerators.dataloading.multi_threaded_augmenter import MultiThreadedAugmenter
-from batchgenerators.transforms.abstract_transforms import Compose
-from batchgenerators.transforms.channel_selection_transforms import DataChannelSelectionTransform, \
-    SegChannelSelectionTransform
-from batchgenerators.transforms.color_transforms import GammaTransform
-from batchgenerators.transforms.spatial_transforms import SpatialTransform, MirrorTransform
-from batchgenerators.transforms.utility_transforms import RemoveLabelTransform, RenameTransform, NumpyToTensor
-
 
 def torch2D_Hausdorff_distance(x,y): # Input be like (Batch,width,height)
     x = x.float()
@@ -41,14 +33,6 @@ def torch2D_Hausdorff_distance(x,y): # Input be like (Batch,width,height)
     return value.max(1)[0]
 
 
-# def calc_loss(outputs, low_res_label_batch, ce_loss, dice_loss, dice_weight:float=0.8, ssl=False):
-#     low_res_logits = outputs['low_res_logits']
-#     # print(low_res_logits.size())
-#     # print(low_res_label_batch.size())
-#     loss_ce = ce_loss(low_res_logits, low_res_label_batch[:].long())
-#     loss_dice = dice_loss(low_res_logits, low_res_label_batch, softmax=True)
-#     loss = (1 - dice_weight) * loss_ce + dice_weight * loss_dice
-#     return loss, loss_ce, loss_dice
 def calc_loss(outputs, low_res_label_batch, ce_loss, dice_loss, dice_weight:float=0.8):
     low_res_logits = outputs['low_res_logits']
     loss_ce = ce_loss(low_res_logits, low_res_label_batch[:].long())
@@ -136,6 +120,7 @@ def trainer(args, model, snapshot_path, multimask_output, low_res, stage=3):
                              worker_init_fn=worker_init_fn)
     valloader = DataLoader(db_val, batch_size=batch_size, shuffle=False, num_workers=8, pin_memory=True,
                              worker_init_fn=worker_init_fn)
+    model.train()
     if args.n_gpu > 1:
         model = nn.DataParallel(model)
         
@@ -171,7 +156,6 @@ def trainer(args, model, snapshot_path, multimask_output, low_res, stage=3):
     
     for epoch_num in range(max_epoch):
         
-        model.train()
         train_loss, train_ce1, train_ce2, train_dice1, train_dice2 = 0, 0, 0, 0, 0
         tbar = tqdm((trainloader), total = len(trainloader), leave=False)
 

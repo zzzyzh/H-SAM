@@ -63,15 +63,15 @@ if __name__ == '__main__':
     parser.add_argument('--dataset', type=str,
                         default='sabs_sammed', help='dataset name')
     parser.add_argument('--root_path', type=str,
-                        default='/home/yanzhonghao/data', help='root dir for data')
-    parser.add_argument('--output', type=str, default='/home/yanzhonghao/data/experiments/h_sam')
+                        default='../../data', help='root dir for data')
+    parser.add_argument('--output', type=str, default='../../data/experiments/h_sam')
     parser.add_argument('--list_dir', type=str,
                         default='./lists/lists_sabs', help='list dir')
     parser.add_argument('--split', type=str,
                         default='test', help='list dir')
     parser.add_argument('--vit_name', type=str,
                         default='vit_b', help='select one vit model')
-    parser.add_argument('--ckpt', type=str, default='/home/yanzhonghao/data/experiments/weights/sam_vit_b_01ec64.pth',
+    parser.add_argument('--ckpt', type=str, default='../../data/experiments/weights/sam_vit_b_01ec64.pth',
                         help='Pretrained checkpoint')
     parser.add_argument('--lora_ckpt', type=str, default=None, help='Finetuned lora checkpoint')
     parser.add_argument('--scale', type=int, default=127)

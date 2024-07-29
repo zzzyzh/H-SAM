@@ -30,5 +30,3 @@ einops
 batchgenerators
 h5py
 icecream
-torchvision==0.17
-torch==2.2.0
