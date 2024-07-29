@@ -15,7 +15,7 @@ import torch.backends.cudnn as cudnn
 
 from segment_anything import sam_model_registry
 from datasets import TestingDataset
-from utils import read_gt_masks, create_volume_masks, eval_metrics, vis_pred, get_logger
+from utils import read_gt_masks, create_volume_masks, eval_metrics, compute_hd95, vis_pred, get_logger
 
     
 def inference(args, multimask_output, model, test_save_path):
@@ -51,6 +51,17 @@ def inference(args, multimask_output, model, test_save_path):
     iou_results, dice_results = eval_metrics(val_masks, gt_masks, args.num_classes)
     logging.info(f'IoU_Results: {iou_results};')
     logging.info(f'Dice_Results: {dice_results}.')
+    
+    if args.volume:
+        metric_hd95 = []
+        for i in range(1, args.num_classes+1):
+            metric_cls_hd95 = []
+            for key in val_masks.keys():   
+                metric_cls_hd95.append(compute_hd95(val_masks[key]==i, gt_masks[key]==i))
+            metric_hd95.append(np.mean(metric_cls_hd95, axis=0))
+        hd95 = np.mean(metric_hd95, axis=0)
+        loggers.info(f'HD95: {round(hd95, 2)}.')
+    
     if not args.volume:
         vis_pred(val_masks, gt_masks, test_save_path, num_classes=args.num_classes)
         

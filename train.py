@@ -11,7 +11,6 @@ from importlib import import_module
 from segment_anything import sam_model_registry
 
 from trainer import trainer
-from icecream import ic
 
 
 os.environ['CUDA_VISIBLE_DEVICES'] = '1,2'
