@@ -42,7 +42,7 @@ class PromptEncoder(nn.Module):
         self.image_embedding_size = image_embedding_size
         self.pe_layer = PositionEmbeddingRandom(embed_dim // 2)
 
-        self.num_point_embeddings: int = 11  # 9 classes point + 2 box corners
+        self.num_point_embeddings: int = 4  # pos/neg point + 2 box corners
         point_embeddings = [nn.Embedding(1, embed_dim) for i in range(self.num_point_embeddings)]
         self.point_embeddings = nn.ModuleList(point_embeddings)
         self.not_a_point_embed = nn.Embedding(1, embed_dim)
@@ -56,7 +56,7 @@ class PromptEncoder(nn.Module):
             LayerNorm2d(mask_in_chans),
             activation(),
             nn.Conv2d(mask_in_chans, embed_dim, kernel_size=1),
-        )  # downsample to 1/4
+        )
         self.no_mask_embed = nn.Embedding(1, embed_dim)
 
     def get_dense_pe(self) -> torch.Tensor:
@@ -88,13 +88,6 @@ class PromptEncoder(nn.Module):
         point_embedding[labels == -1] += self.not_a_point_embed.weight
         point_embedding[labels == 0] += self.point_embeddings[0].weight
         point_embedding[labels == 1] += self.point_embeddings[1].weight
-        point_embedding[labels == 2] += self.point_embeddings[2].weight
-        point_embedding[labels == 3] += self.point_embeddings[3].weight
-        point_embedding[labels == 4] += self.point_embeddings[4].weight
-        point_embedding[labels == 5] += self.point_embeddings[5].weight
-        point_embedding[labels == 6] += self.point_embeddings[6].weight
-        point_embedding[labels == 7] += self.point_embeddings[7].weight
-        point_embedding[labels == 8] += self.point_embeddings[8].weight
         return point_embedding
 
     def _embed_boxes(self, boxes: torch.Tensor) -> torch.Tensor:
@@ -102,8 +95,8 @@ class PromptEncoder(nn.Module):
         boxes = boxes + 0.5  # Shift to center of pixel
         coords = boxes.reshape(-1, 2, 2)
         corner_embedding = self.pe_layer.forward_with_coords(coords, self.input_image_size)
-        corner_embedding[:, 0, :] += self.point_embeddings[9].weight
-        corner_embedding[:, 1, :] += self.point_embeddings[10].weight
+        corner_embedding[:, 0, :] += self.point_embeddings[2].weight
+        corner_embedding[:, 1, :] += self.point_embeddings[3].weight
         return corner_embedding
 
     def _embed_masks(self, masks: torch.Tensor) -> torch.Tensor:
