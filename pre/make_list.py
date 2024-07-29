@@ -33,10 +33,10 @@ def pre_val_test():
 
 if __name__ == "__main__":
     random.seed(2024)
-    # root_path = '/home/yanzhonghao/data/ven/bhx_sammed'
-    # save_path = '/home/yanzhonghao/medical_sam/H-SAM/lists/lists_bhx'
-    root_path = '/home/yanzhonghao/data/abdomen/sabs_sammed'
-    save_path = '/home/yanzhonghao/medical_sam/H-SAM/lists/lists_sabs'
+    # root_path = '../../data/ven/bhx_sammed'
+    # save_path = '../../msa/H-SAM/lists/lists_bhx'
+    root_path = '../../data/abdomen/sabs_sammed'
+    save_path = '../../msa/H-SAM/lists/lists_sabs'
 
     pre_train(perc=0.1)
     pre_train(perc=0.05)

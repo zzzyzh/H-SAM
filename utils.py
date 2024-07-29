@@ -272,7 +272,6 @@ def eval_metrics(eval_masks, gt_eval_masks, num_classes=4):
     
     all_im_dice_acc = []
     all_im_iou_acc = []
-    all_im_iou_acc_challenge = []
     
     im_dices = {c: [] for c in range(1, num_classes+1)}
     im_ious = {c: [] for c in range(1, num_classes+1)}    
@@ -294,7 +293,6 @@ def eval_metrics(eval_masks, gt_eval_masks, num_classes=4):
             if target.sum() > 0: 
                 all_im_dice_acc.append(0)
                 all_im_iou_acc.append(0)
-                all_im_iou_acc_challenge.append(0)
                 for class_id in gt_classes:
                     im_dices[class_id].append(0)
                     im_ious[class_id].append(0)
@@ -327,13 +325,10 @@ def eval_metrics(eval_masks, gt_eval_masks, num_classes=4):
             all_im_dice_acc.append(np.mean(im_dice))
         if len(im_iou) > 0:
             all_im_iou_acc.append(np.mean(im_iou))
-        if len(im_iou_challenge) > 0:
-            all_im_iou_acc_challenge.append(np.mean(im_iou_challenge))
 
     # calculate final metrics
     mean_im_dice = np.mean(all_im_dice_acc)
     mean_im_iou = np.mean(all_im_iou_acc)
-    mean_im_iou_challenge = np.mean(all_im_iou_acc_challenge)
     mean_class_dice = torch.tensor([torch.tensor(values).float().mean() for c, values in class_dices.items() if len(values) > 0]).mean().item()
     mean_class_iou = torch.tensor([torch.tensor(values).float().mean() for c, values in class_ious.items() if len(values) > 0]).mean().item()
     mean_imm_iou = cum_I / (cum_U + 1e-15)
@@ -348,7 +343,6 @@ def eval_metrics(eval_masks, gt_eval_masks, num_classes=4):
         final_class_im_iou[c-1] = torch.tensor(class_ious[c]).float().mean()
         cIoU_per_class.append(round((final_class_im_iou[c-1]*100).item(), 2))
         
-    iou_results["challengIoU"] = round(mean_im_iou_challenge*100,2)
     iou_results["IoU"] = round(mean_im_iou*100,2)
     iou_results["mcIoU"] = round(mean_class_iou*100,2)
     iou_results["mIoU"] = round(mean_imm_iou*100,2)

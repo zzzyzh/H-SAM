@@ -250,14 +250,14 @@ def trainer(args, model, snapshot_path, multimask_output, low_res, stage=3):
         loggers.info(f'IoU_Results: {iou_results};')
         loggers.info(f'Dice_Results: {dice_results}.')
         
-        if iou_results['challengIoU'] > best_performance:
-            best_performance = iou_results['challengIoU']
+        if dice_results['Dice'] > best_performance:
+            best_performance = dice_results['Dice']
             save_mode_path = os.path.join(snapshot_path, 'best_ckpt.pth')
             try:
                 model.save_lora_parameters(save_mode_path)
             except:
                 model.module.save_lora_parameters(save_mode_path)
-            loggers.info("save model to {}".format(save_mode_path))
+            loggers.info(f'Best Dice: {best_performance:.4f} at Epoch {epoch_num+1}')        
 
 
     writer.close()
