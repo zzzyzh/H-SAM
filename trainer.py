@@ -245,7 +245,7 @@ def trainer(args, model, snapshot_path, multimask_output, low_res, stage=3):
             
                 vbar.set_description(f'Val Epoch [{epoch_num}/{max_epoch}]')
                 
-        iou_results, dice_results = eval_metrics(val_masks, gt_masks, num_classes)
+        iou_results, dice_results, _, _ = eval_metrics(val_masks, gt_masks, num_classes)
         loggers.info(f'Validation - Epoch: {epoch_num}/{max_epoch-1};')   
         loggers.info(f'IoU_Results: {iou_results};')
         loggers.info(f'Dice_Results: {dice_results}.')

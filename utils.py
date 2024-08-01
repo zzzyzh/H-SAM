@@ -21,7 +21,7 @@ import logging
 # bhx
 BHX_TEST_VOLUME = [str(i).zfill(4) for i in range(701, 801)]
 # sabs
-SABS_TEST_VOLUME = ["0029", "0003", "0001", "0004", "0025", "0035"] # reference: https://github.com/Beckschen/TransUNet
+SABS_TEST_VOLUME = ["0018", "0002", "0000", "0003", "0014", "0024"]
 
 
 class Focal_loss(nn.Module):
@@ -69,46 +69,6 @@ class Focal_loss(nn.Module):
         else:
             loss = loss.sum()
         return loss
-
-
-# class DiceLoss(nn.Module):
-#     def __init__(self, n_classes):
-#         super(DiceLoss, self).__init__()
-#         self.n_classes = n_classes
-
-#     def _one_hot_encoder(self, input_tensor):
-#         tensor_list = []
-#         for i in range(self.n_classes):
-#             temp_prob = input_tensor == i  # * torch.ones_like(input_tensor)
-#             tensor_list.append(temp_prob.unsqueeze(1))
-#         output_tensor = torch.cat(tensor_list, dim=1)
-#         return output_tensor.float()
-
-#     def _dice_loss(self, score, target):
-#         target = target.float()
-#         smooth = 1e-5
-#         intersect = torch.sum(score * target)
-#         y_sum = torch.sum(target * target)
-#         z_sum = torch.sum(score * score)
-#         loss = (2 * intersect + smooth) / (z_sum + y_sum + smooth)
-#         loss = 1 - loss
-#         return loss
-
-#     def forward(self, inputs, target, weight=None, softmax=False):
-#         if softmax:
-#             inputs = torch.softmax(inputs, dim=1)
-#         target = self._one_hot_encoder(target)
-#         if weight is None:
-#             weight = [1] * self.n_classes
-#         assert inputs.size() == target.size(), 'predict {} & target {} shape do not match'.format(inputs.size(),
-#                                                                                                   target.size())
-#         class_wise_dice = []
-#         loss = 0.0
-#         for i in range(0, self.n_classes):
-#             dice = self._dice_loss(inputs[:, i], target[:, i])
-#             class_wise_dice.append(1.0 - dice.item())
-#             loss += dice * weight[i]
-#         return loss / self.n_classes
 
 
 class DiceLoss(nn.Module):
@@ -253,12 +213,8 @@ def vis_pred(pred_dict, gt_dict, save_dir, num_classes):
         plt.close()
 
 
-def eval_metrics(eval_masks, gt_eval_masks, num_classes=4):
-    """Given the predicted masks and groundtruth annotations, predict the challenge IoU, IoU, mean class IoU, and the IoU for each class
-        
-      ** The evaluation code is taken from the official evaluation code of paper: ISINet: An Instance-Based Approach for Surgical Instrument Segmentation
-      ** at https://github.com/BCV-Uniandes/ISINet
-      
+def eval_metrics(eval_masks, gt_eval_masks, num_classes=4, volume=False):
+    """Given the predicted masks and groundtruth annotations, predict the IoU, mean class IoU, and the IoU for each class / Dice, mean class Dice and the Dice for each class.
     Args:
         eval_masks (dict): the dictionary containing the predicted mask for each frame 
         gt_eval_masks (dict): the dictionary containing the groundtruth mask for each frame 
@@ -267,24 +223,22 @@ def eval_metrics(eval_masks, gt_eval_masks, num_classes=4):
         dict: a dictionary containing the evaluation results for different metrics 
     """
 
-    dice_results = dict()
     iou_results = dict()
+    dice_results = dict()
     
+    all_im_iou_acc = [] 
     all_im_dice_acc = []
-    all_im_iou_acc = []
     
-    im_dices = {c: [] for c in range(1, num_classes+1)}
-    im_ious = {c: [] for c in range(1, num_classes+1)}    
-    class_dices = {c: [] for c in range(1, num_classes+1)}
     class_ious = {c: [] for c in range(1, num_classes+1)}
+    class_dices = {c: [] for c in range(1, num_classes+1)}
     cum_I, cum_U = 0, 0
     
     for file_name, prediction in eval_masks.items():
         
         full_mask = gt_eval_masks[file_name]
-        im_dice = []
         im_iou = []
-        im_iou_challenge = []
+        im_dice = []
+        
         target = full_mask.numpy()
         gt_classes = np.unique(target)
         gt_classes.sort()
@@ -294,13 +248,10 @@ def eval_metrics(eval_masks, gt_eval_masks, num_classes=4):
                 all_im_dice_acc.append(0)
                 all_im_iou_acc.append(0)
                 for class_id in gt_classes:
-                    im_dices[class_id].append(0)
-                    im_ious[class_id].append(0)
                     class_dices[class_id].append(0)
                     class_ious[class_id].append(0)
             continue
 
-        gt_classes = torch.unique(full_mask)
         # loop through all classes from 1 to num_classes 
         for class_id in range(1, num_classes+1): 
 
@@ -310,38 +261,33 @@ def eval_metrics(eval_masks, gt_eval_masks, num_classes=4):
             if current_pred.astype(np.float64).sum() != 0 or current_target.astype(np.float64).sum() != 0:
                 dice = compute_mask_dice(current_pred, current_target)
                 im_dice.append(dice)
-                i, u = compute_mask_IU_eval(current_pred, current_target)     
-                im_iou.append(i/u)
+                i, u, iou = compute_mask_IoU(current_pred, current_target)     
+                im_iou.append(iou)
                 cum_I += i
                 cum_U += u
-                im_dices[class_id].append(dice)
-                im_ious[class_id].append(i/u)
+
                 class_dices[class_id].append(dice)
-                class_ious[class_id].append(i/u)
-                if class_id in gt_classes:
-                    im_iou_challenge.append(i/u)
+                class_ious[class_id].append(iou)
         
-        if len(im_dice) > 0:
-            all_im_dice_acc.append(np.mean(im_dice))
         if len(im_iou) > 0:
-            all_im_iou_acc.append(np.mean(im_iou))
+            all_im_iou_acc.append(np.nanmean(im_iou))
+        if len(im_dice) > 0:
+            all_im_dice_acc.append(np.nanmean(im_dice))
 
     # calculate final metrics
-    mean_im_dice = np.mean(all_im_dice_acc)
-    mean_im_iou = np.mean(all_im_iou_acc)
-    mean_class_dice = torch.tensor([torch.tensor(values).float().mean() for c, values in class_dices.items() if len(values) > 0]).mean().item()
+    mean_im_iou = np.nanmean(all_im_iou_acc)
+    mean_im_dice = np.nanmean(all_im_dice_acc)
     mean_class_iou = torch.tensor([torch.tensor(values).float().mean() for c, values in class_ious.items() if len(values) > 0]).mean().item()
+    mean_class_dice = torch.tensor([torch.tensor(values).float().mean() for c, values in class_dices.items() if len(values) > 0]).mean().item()
     mean_imm_iou = cum_I / (cum_U + 1e-15)
     
-    final_im_dice = torch.zeros(9)
-    final_class_im_iou = torch.zeros(9)
     dice_per_class = []
     cIoU_per_class = []
     for c in range(1, num_classes + 1):
-        final_im_dice[c-1] = torch.tensor(im_dices[c]).float().mean()
-        dice_per_class.append(round((final_im_dice[c-1]*100).item(), 2))
-        final_class_im_iou[c-1] = torch.tensor(class_ious[c]).float().mean()
-        cIoU_per_class.append(round((final_class_im_iou[c-1]*100).item(), 2))
+        final_class_im_dice = torch.tensor(class_dices[c]).float().mean()
+        dice_per_class.append(round((final_class_im_dice*100).item(), 2))
+        final_class_im_iou = torch.tensor(class_ious[c]).float().mean()
+        cIoU_per_class.append(round((final_class_im_iou*100).item(), 2))
         
     iou_results["IoU"] = round(mean_im_iou*100,2)
     iou_results["mcIoU"] = round(mean_class_iou*100,2)
@@ -352,7 +298,10 @@ def eval_metrics(eval_masks, gt_eval_masks, num_classes=4):
     dice_results["mcDice"] = round(mean_class_dice*100,2)
     dice_results["Dice_per_class"] = dice_per_class
     
-    return iou_results, dice_results
+    iou_csv = [iou_results["IoU"], iou_results["mcIoU"], iou_results["mIoU"]] + iou_results["cIoU_per_class"]
+    dice_csv = [dice_results["Dice"], dice_results["mcDice"]] + dice_results["Dice_per_class"] 
+    
+    return iou_results, dice_results, np.array(iou_csv), np.array(dice_csv)
 
 
 def compute_mask_dice(masks, target):
@@ -365,14 +314,14 @@ def compute_mask_dice(masks, target):
     return dice
 
 
-def compute_mask_IU_eval(masks, target):
+def compute_mask_IoU(masks, target):
     """compute iou used for evaluation
     """
     assert target.shape[-2:] == masks.shape[-2:]
     temp = masks * target
     intersection = temp.sum()
     union = ((masks + target) - temp).sum()
-    return intersection, union
+    return intersection, union, intersection / (union+1e-15)
 
 
 def compute_hd95(pred, gt):

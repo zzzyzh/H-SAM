@@ -7,6 +7,7 @@ from tqdm import tqdm
 from icecream import ic
 from importlib import import_module
 import matplotlib.pyplot as plt
+import csv
 
 import numpy as np
 import torch
@@ -18,7 +19,7 @@ from datasets import TestingDataset
 from utils import read_gt_masks, create_volume_masks, eval_metrics, compute_hd95, vis_pred, get_logger
 
     
-def inference(args, multimask_output, model, test_save_path):
+def inference(args, multimask_output, model, test_save_path, snapshot_path):
     base_dir = os.path.join(args.root_path, args.task, args.dataset)
     db_val = TestingDataset(base_dir=base_dir, list_dir=args.list_dir, split='test')
     testloader = DataLoader(db_val, batch_size=32, shuffle=False, num_workers=8)
@@ -51,6 +52,14 @@ def inference(args, multimask_output, model, test_save_path):
     iou_results, dice_results = eval_metrics(val_masks, gt_masks, args.num_classes)
     logging.info(f'IoU_Results: {iou_results};')
     logging.info(f'Dice_Results: {dice_results}.')
+    
+    iou_results, dice_results, iou_csv, dice_csv = eval_metrics(val_masks, gt_masks, args.num_classes)
+    loggers.info(f'IoU_Results: {iou_results};')
+    loggers.info(f'Dice_Results: {dice_results}.')
+    with open(os.path.join(snapshot_path, 'results_volume.csv' if args.volume else 'results.csv'), 'w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(iou_csv)
+        writer.writerow(dice_csv)
     
     if args.volume:
         metric_hd95 = []
@@ -147,4 +156,4 @@ if __name__ == '__main__':
     test_save_path = os.path.join(snapshot_path, 'predictions')
     os.makedirs(test_save_path, exist_ok=True)
 
-    inference(args, multimask_output, net, test_save_path)
+    inference(args, multimask_output, net, test_save_path, snapshot_path)
