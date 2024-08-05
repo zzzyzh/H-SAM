@@ -11,7 +11,6 @@ import torch.optim as optim
 from tensorboardX import SummaryWriter
 from torch.nn.modules.loss import CrossEntropyLoss, CosineEmbeddingLoss
 from torch.utils.data import DataLoader
-import torch.nn.functional as F
 from tqdm import tqdm
 from utils import DiceLoss, Focal_loss, read_gt_masks, eval_metrics, get_logger
 from torchvision import transforms

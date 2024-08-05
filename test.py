@@ -4,25 +4,25 @@ import logging
 import argparse
 import random
 from tqdm import tqdm
-from icecream import ic
 from importlib import import_module
-import matplotlib.pyplot as plt
 import csv
 
 import numpy as np
 import torch
 from torch.utils.data import DataLoader
 import torch.backends.cudnn as cudnn
+import torch.nn.functional as F
 
 from segment_anything import sam_model_registry
 from datasets import TestingDataset
 from utils import read_gt_masks, create_volume_masks, eval_metrics, compute_hd95, vis_pred, get_logger
+from tsne import RunTsne
 
     
 def inference(args, multimask_output, model, test_save_path, snapshot_path):
     base_dir = os.path.join(args.root_path, args.task, args.dataset)
     db_val = TestingDataset(base_dir=base_dir, list_dir=args.list_dir, split='test')
-    testloader = DataLoader(db_val, batch_size=32, shuffle=False, num_workers=8)
+    testloader = DataLoader(db_val, batch_size=16, shuffle=False, num_workers=8)
     gt_masks = read_gt_masks(data_root_dir=base_dir, mode='test', img_size=args.img_size, volume=args.volume)
 
     val_masks = dict()
@@ -49,10 +49,6 @@ def inference(args, multimask_output, model, test_save_path, snapshot_path):
     if args.volume:
         val_masks = create_volume_masks(base_dir, args.img_size, args.img_size, val_masks)
         
-    iou_results, dice_results = eval_metrics(val_masks, gt_masks, args.num_classes)
-    logging.info(f'IoU_Results: {iou_results};')
-    logging.info(f'Dice_Results: {dice_results}.')
-    
     iou_results, dice_results, iou_csv, dice_csv = eval_metrics(val_masks, gt_masks, args.num_classes)
     loggers.info(f'IoU_Results: {iou_results};')
     loggers.info(f'Dice_Results: {dice_results}.')
@@ -71,9 +67,31 @@ def inference(args, multimask_output, model, test_save_path, snapshot_path):
         hd95 = np.mean(metric_hd95, axis=0)
         loggers.info(f'HD95: {round(hd95, 2)}.')
     
-    if not args.volume:
+    if args.vis:
         vis_pred(val_masks, gt_masks, test_save_path, num_classes=args.num_classes)
         
+    if args.tsne:
+        tsne_path = os.path.join(snapshot_path, 'tsne')
+        os.makedirs(tsne_path, exist_ok=True)
+        
+        tsne_runner = RunTsne(dataset_name=dataset_name,
+                              num_class=args.num_classes,
+                              output_dir=tsne_path)
+        
+        with torch.no_grad():
+            tbar = tqdm((testloader), total = len(testloader), leave=False)
+                
+            for sampled_batch in tbar:   
+                image_batch, label_batch, name_batch = sampled_batch['image'], sampled_batch['label'], sampled_batch['case_name'] # [b, c, h, w], [b, h, w]
+                image_batch, label_batch = image_batch.cuda(), label_batch.cuda()
+                image_batch = F.interpolate(image_batch, (args.resolution, args.resolution), mode='bilinear', align_corners=False)
+
+                image_embeddings, _ = model.sam.image_encoder(image_batch) # [b, 256, featsize, featsize]
+
+                tsne_runner.input2basket(image_embeddings, label_batch.squeeze(1).to(torch.long), dataset_name)  
+                
+        tsne_runner.draw_tsne([dataset_name], plot_memory=False, clscolor=True)
+             
     
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -95,6 +113,7 @@ if __name__ == '__main__':
                         help='Pretrained checkpoint')
     parser.add_argument('--lora_ckpt', type=str, default=None, help='Finetuned lora checkpoint')
     parser.add_argument('--scale', type=int, default=127)
+    parser.add_argument('--seed', type=int,default=2024, help='random seed')
     
     # Running Strategy
     parser.add_argument('--img_size', type=int,
@@ -111,7 +130,7 @@ if __name__ == '__main__':
     parser.add_argument('--module', type=str, default='sam_lora_image_encoder')
     parser.add_argument('--volume', type=bool, default=False, help='whether to evaluate test set in volume')
     parser.add_argument('--vis', type=bool, default=False, help='whether to visualise results')
-    parser.add_argument('--seed', type=int,default=2024, help='random seed')
+    parser.add_argument('--tsne', type=bool, default=False, help='whether to visualise features with tsne')
     
     args = parser.parse_args()
 
